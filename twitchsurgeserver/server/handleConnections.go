@@ -7,11 +7,6 @@ import (
 	"strings"
 )
 
-//var clientConnections = make(map[*websocket.Conn]bool) //clients connected
-
-/*var originsAllowed []string = []string{"https://www.twitch.tv", "chrome-extension://klbaonpoecljfmdgdcipnlchecjcbkmj"}
-var config Config = Config{OriginsAllowed: originsAllowed}*/
-
 //Configuration - Global configuration
 var Configuration = Config{}
 
