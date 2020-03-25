@@ -35,7 +35,6 @@ func SetupAndHandleConnections() {
 	if configReadErr != nil {
 		return
 	}
-	fmt.Println(Configuration)
 
 	err := http.ListenAndServe(":5000", nil)
 	if err != nil {

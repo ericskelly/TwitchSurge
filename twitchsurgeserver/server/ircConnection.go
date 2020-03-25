@@ -14,7 +14,7 @@ func IrcConnection(channel string, channelConnection *ChannelConnection) {
 
 func runIrcConnection(channel string, channelConnection *ChannelConnection) {
 	channelName := "#" + strings.ToLower(channel)
-	c := irc.SimpleClient("ttvsurge")
+	c := irc.SimpleClient("ttvserge")
 	c.Config().Server = "irc.chat.twitch.tv:6667"
 	c.Config().Pass = Configuration.TwitchAuth
 

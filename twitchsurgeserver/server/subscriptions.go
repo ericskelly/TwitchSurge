@@ -1,7 +1,6 @@
 package server
 
 import (
-	"fmt"
 	"strings"
 	"sync"
 )
@@ -69,7 +68,6 @@ func getBTTVEmotes(ChannelConnection *ChannelConnection) {
 	}
 
 	ChannelConnection.currentBTTVEmoteNames = bttvChannelEmotes
-	fmt.Println(ChannelConnection.currentBTTVEmoteNames)
 }
 
 func addToSliceClientInfo(slice *[]*ClientInfo, clientinfo *ClientInfo) bool {
