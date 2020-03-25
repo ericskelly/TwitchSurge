@@ -1,0 +1,11 @@
+.surgeSwitchDiv {
+    text-align: center; 
+    border-bottom: solid 0.5px purple; 
+    padding-bottom:5px;
+}
+
+.surgeChannelTable {
+    width:300px;
+    max-height: 200px;
+    padding-top:5px;
+}
