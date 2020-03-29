@@ -1,6 +1,7 @@
 package server
 
 import (
+	//"fmt"
 	"strings"
 	"sync"
 )
@@ -13,6 +14,7 @@ var baseBTTVUrl string = "https://api.betterttv.net/2/channels/"
 
 //SubscribeToChannel - subcribe a user to a channel
 func SubscribeToChannel(channel string, client *ClientInfo) {
+	globalSubscribedLock.RLock()
 	currentChannel := globalSubscribedChannels[channel]
 	if currentChannel == nil {
 		globalSubscribedLock.Lock()
@@ -20,8 +22,7 @@ func SubscribeToChannel(channel string, client *ClientInfo) {
 		currentChannel.members = []*ClientInfo{client}
 		currentChannel.channelName = channel
 		globalSubscribedChannels[channel] = currentChannel
-		getChannelFFZEmotes(currentChannel)
-		getBTTVEmotes(currentChannel)
+		getChannelEmotesConcurrentWait(currentChannel)
 		IrcConnection(channel, currentChannel)
 		globalSubscribedLock.Unlock()
 	} else {
@@ -29,14 +30,35 @@ func SubscribeToChannel(channel string, client *ClientInfo) {
 		addToSliceClientInfo(&currentChannel.members, client)
 		currentChannel.Unlock()
 	}
+	globalSubscribedLock.RUnlock()
 }
 
 //UnsubscribeFromChannel - unsubscribe a user from a channel
 func UnsubscribeFromChannel(channel string, client *ClientInfo) {
-
+	globalSubscribedLock.RLock()
+	channelConn := globalSubscribedChannels[channel]
+	if channelConn != nil {
+		globalSubscribedLock.Lock()
+		removeFromSliceClientInfo(&channelConn.members, client)
+		if len(channelConn.members) == 0 {
+			IrcDisconnection(channelConn)
+			delete(globalSubscribedChannels, channel)
+		}
+		globalSubscribedLock.Unlock()
+	}
+	globalSubscribedLock.RUnlock()
 }
 
-func getChannelFFZEmotes(channelConnection *ChannelConnection) {
+func getChannelEmotesConcurrentWait(channelConnection *ChannelConnection) {
+	var wg sync.WaitGroup
+	wg.Add(2)
+	go getChannelFFZEmotes(channelConnection, &wg)
+	go getBTTVEmotes(channelConnection, &wg)
+	wg.Wait()
+}
+
+func getChannelFFZEmotes(channelConnection *ChannelConnection, wg *sync.WaitGroup) {
+	defer wg.Done()
 	channelURL := baseFFZUrl + strings.ToLower(channelConnection.channelName)
 	response := FFZRoomResponse{}
 	err := GetJSON(channelURL, &response)
@@ -54,8 +76,9 @@ func getChannelFFZEmotes(channelConnection *ChannelConnection) {
 	channelConnection.currentFFZEmoteNames = ffzChannelEmotes
 }
 
-func getBTTVEmotes(ChannelConnection *ChannelConnection) {
-	channelURL := baseBTTVUrl + strings.ToLower(ChannelConnection.channelName)
+func getBTTVEmotes(channelConnection *ChannelConnection, wg *sync.WaitGroup) {
+	defer wg.Done()
+	channelURL := baseBTTVUrl + strings.ToLower(channelConnection.channelName)
 	response := BTTVResponse{}
 	err := GetJSON(channelURL, &response)
 	if err != nil {
@@ -67,7 +90,7 @@ func getBTTVEmotes(ChannelConnection *ChannelConnection) {
 		bttvChannelEmotes[emote.Code] = emote.Code
 	}
 
-	ChannelConnection.currentBTTVEmoteNames = bttvChannelEmotes
+	channelConnection.currentBTTVEmoteNames = bttvChannelEmotes
 }
 
 func addToSliceClientInfo(slice *[]*ClientInfo, clientinfo *ClientInfo) bool {
@@ -81,4 +104,17 @@ func addToSliceClientInfo(slice *[]*ClientInfo, clientinfo *ClientInfo) bool {
 	newslice = append(newslice, clientinfo)
 	*slice = newslice
 	return true
+}
+
+func removeFromSliceClientInfo(slice *[]*ClientInfo, clientinfo *ClientInfo) bool {
+	newslice := *slice
+	removed := false
+	for i, v := range newslice {
+		if v == clientinfo {
+			newslice = append(newslice[:i], newslice[i+1:]...)
+			removed = true
+		}
+	}
+	*slice = newslice
+	return removed
 }

@@ -17,6 +17,11 @@ chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
     this.createWebSocketConnection();
     sendResponse({ message: "received" });
   }
+  else if (request.message === "disconnect_from_websocket")
+  {
+    this.closeWebSocketConnection()
+    sendResponse({ message: "received" });
+  }
   else if (request.message === "send_channel_sub")
   {
     this.sendChannelSubOrUnsub(request.channelname, request.type);
@@ -44,10 +49,11 @@ function connect(host) {
   }
 
   websocket.onopen = function () {
-    /*chrome.storage.local.get(["username"], function (data) {
-      websocket.send(JSON.stringify({ userLoginId: data.username }));
-    });*/
-    websocket.send(JSON.stringify({ channelname: 'open' }))
+
+    websocket.send(JSON.stringify({ channelname: 'open' }));
+    chrome.storage.local.set({ 'websocketConn': true }, function () {
+      console.log("websocket connection saved")
+    });
   };
 
   websocket.onmessage = function (event) {
@@ -56,7 +62,7 @@ function connect(host) {
     var channelname = received_msg.ChannelName
     var demoNotificationOptions = {
       type: "basic",
-      message: channelname + " Is Serging!",
+      message: channelname + " Is Surging!",
       title: "Twitch Surge",
       iconUrl: "images/twitch.png"
     }
@@ -66,28 +72,26 @@ function connect(host) {
 
   websocket.onclose = function () {
     closeWebSocketConnection()
-    /*chrome.storage.local.get(['demo_session'], function (data) {
-      if (data.demo_session)
-      {
-        createWebSocketConnection();
-      }
-    });*/
   };
 }
 
 function sendChannelSubOrUnsub(channelname, type) {
   if (websocket)
   {
-    console.log(channelname);
-    //websocket.send(JSON.stringify({ channelName: channelname, type: type }))
     websocket.send(JSON.stringify({ channelName: channelname, type: type }));
   }
 }
 
 function closeWebSocketConnection() {
+  console.log(websocket);
   if (websocket != null || websocket != undefined)
   {
     websocket.close();
     websocket = undefined;
+    chrome.storage.local.set({ 'websocketConn': false }, function () {
+      console.log("websocket connection closed")
+    });
+
+    chrome.storage.local.remove('checkedSettings');
   }
 }

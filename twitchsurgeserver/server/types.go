@@ -1,6 +1,7 @@
 package server
 
 import (
+	irc "github.com/fluffle/goirc/client"
 	"sync"
 	"time"
 )
@@ -40,6 +41,8 @@ type ChannelConnection struct {
 	members                     []*ClientInfo
 	currentFFZEmoteNames        map[string]string
 	currentBTTVEmoteNames       map[string]string
+	ircConn                     *irc.Conn
+	quitIRC                     chan bool
 	sync.RWMutex
 }
 

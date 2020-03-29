@@ -88,9 +88,8 @@ func socketConnection(conn *websocket.Conn) {
 //SendIrcChannelSurges - Write surges back to client
 func listenForIrcChannelSurges(conn *websocket.Conn, client *ClientInfo, ircMessageChannel <-chan SurgeMessage) {
 	var msg SurgeMessage
+	msg.ChannelName = ""
 
-	msg.ChannelName = "test"
-	//ircMessageChannel <- msg
 	for {
 		select {
 		case msg := <-ircMessageChannel:

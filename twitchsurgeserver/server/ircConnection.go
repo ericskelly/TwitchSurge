@@ -12,15 +12,25 @@ func IrcConnection(channel string, channelConnection *ChannelConnection) {
 	runIrcConnection(channel, channelConnection)
 }
 
+// IrcDisconnection - Disconnect channel from IRC
+func IrcDisconnection(channelConnection *ChannelConnection) {
+	if err := channelConnection.ircConn.Close(); err != nil {
+		fmt.Println("Irc disconnection error")
+	}
+}
+
 func runIrcConnection(channel string, channelConnection *ChannelConnection) {
 	channelName := "#" + strings.ToLower(channel)
 	c := irc.SimpleClient("ttvserge")
 	c.Config().Server = "irc.chat.twitch.tv:6667"
 	c.Config().Pass = Configuration.TwitchAuth
+	fmt.Println(channelName)
 
 	c.HandleFunc(irc.CONNECTED, func(conn *irc.Conn, line *irc.Line) {
 		fmt.Println("connected")
 		conn.Join(channelName)
+		channelConnection.ircConn = conn
+		channelConnection.quitIRC = make(chan bool)
 	})
 
 	c.HandleFunc(irc.PRIVMSG, func(conn *irc.Conn, line *irc.Line) {
@@ -31,6 +41,7 @@ func runIrcConnection(channel string, channelConnection *ChannelConnection) {
 
 	c.HandleFunc(irc.DISCONNECTED, func(conn *irc.Conn, line *irc.Line) {
 		fmt.Println("disconnected")
+		channelConnection.quitIRC <- true
 	})
 
 	if err := c.Connect(); err != nil {
@@ -62,6 +73,7 @@ func determineWeightedChatMessage(line *irc.Line, channelConnection *ChannelConn
 
 func runTicker(channelConnection *ChannelConnection) {
 	channelConnection.channelTicker = time.NewTicker(10 * time.Second)
+	defer channelConnection.channelTicker.Stop()
 	averageMessageCounter := 0
 	messagesPerMinute := 0.0
 	for {
@@ -79,6 +91,8 @@ func runTicker(channelConnection *ChannelConnection) {
 				checkForSurge(channelConnection)
 			}
 			channelConnection.weightedMessagesPerInterval = 0
+		case <-channelConnection.quitIRC:
+			return
 		}
 	}
 }
